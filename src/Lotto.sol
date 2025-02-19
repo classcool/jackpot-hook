@@ -7,10 +7,10 @@ import { Ball } from "./types/Ball.sol";
 library Lotto {
 
     Ball constant ZERO_BALL = Ball.wrap(0x00);
-    Ball constant MAX_BALL = Ball.wrap(0x31); // ball 42
+    Ball constant MAX_BALL = Ball.wrap(0x31); 
 
     function isValidDraw(LottoDraw memory draw) public pure returns (bool) {
-        // 1. No repeat draw (a set)
+        // 1. Check for repeat balls
         if (Ball.unwrap(draw.ball1) == Ball.unwrap(draw.ball2)) return false;
         if (Ball.unwrap(draw.ball1) == Ball.unwrap(draw.ball3)) return false;
         if (Ball.unwrap(draw.ball1) == Ball.unwrap(draw.ball4)) return false;
@@ -31,7 +31,7 @@ library Lotto {
 
         if (Ball.unwrap(draw.ball5) == Ball.unwrap(draw.ball6)) return false;
 
-        // 2. Between [1, 49]
+        // 2. Check balls are between [1, 49]
         if (Ball.unwrap(draw.ball1) == Ball.unwrap(ZERO_BALL) || Ball.unwrap(draw.ball1) > Ball.unwrap(MAX_BALL)) {
             return false;
         }
