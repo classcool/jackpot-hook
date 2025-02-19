@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.24;
 
+import { Lotto } from "./Lotto.sol";
+import { LottoDraw } from "./LottoDraw.sol";
 import { IPoolManager } from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 import { PoolKey } from "@uniswap/v4-core/src/types/PoolKey.sol";
 import { Hooks } from "v4-core/libraries/Hooks.sol";
@@ -11,7 +13,13 @@ import { BaseHook } from "v4-periphery/src/utils/BaseHook.sol";
 
 contract Jackpot is BaseHook {
 
+    using Lotto for LottoDraw;
+
     constructor(IPoolManager _manager) BaseHook(_manager) { }
+
+    mapping(address => LottoDraw) public draws;
+
+    event NewLottoDraw(address player, LottoDraw indexed draw);
 
     error DynamicFeeNotSet(uint24 fee);
 
@@ -34,12 +42,22 @@ contract Jackpot is BaseHook {
         });
     }
 
-    function _beforeInitialize(address, PoolKey calldata key, uint160)
-        internal
-        pure
-        override
-        returns (bytes4)
-    {
+    function setDraw(LottoDraw memory draw) public returns (bool isValid) {
+        // 1. check valid draw
+        (isValid) = draw.isValidDraw();
+
+        // 2. update user draw
+        if (isValid) {
+            draws[msg.sender] = draw;
+            emit NewLottoDraw(msg.sender, draw);
+        }
+    }
+
+    function getDraw(address user) public view returns (LottoDraw memory) {
+        return draws[user];
+    }
+
+    function _beforeInitialize(address, PoolKey calldata key, uint160) internal pure override returns (bytes4) {
         // TODO:
         // 1. Check that pool has a dynamic Fee
         if (key.fee != 0x800000) revert DynamicFeeNotSet(key.fee);
@@ -93,23 +111,20 @@ contract Jackpot is BaseHook {
         return this.beforeRemoveLiquidity.selector;
     }
 
-    function _beforeSwap(
-        address,
-        PoolKey calldata,
-        IPoolManager.SwapParams calldata,
-        bytes calldata
-    ) internal override returns (bytes4, BeforeSwapDelta, uint24) {
+    function _beforeSwap(address, PoolKey calldata, IPoolManager.SwapParams calldata, bytes calldata)
+        internal
+        override
+        returns (bytes4, BeforeSwapDelta, uint24)
+    {
         // TODO:
         return (this.beforeSwap.selector, BeforeSwapDelta.wrap(0), 0);
     }
 
-    function _afterSwap(
-        address,
-        PoolKey calldata,
-        IPoolManager.SwapParams calldata,
-        BalanceDelta,
-        bytes calldata
-    ) internal override returns (bytes4, int128) {
+    function _afterSwap(address, PoolKey calldata, IPoolManager.SwapParams calldata, BalanceDelta, bytes calldata)
+        internal
+        override
+        returns (bytes4, int128)
+    {
         // TODO:
         return (this.afterSwap.selector, 0);
     }
