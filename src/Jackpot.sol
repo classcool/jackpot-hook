@@ -56,6 +56,18 @@ contract Jackpot is BaseHook {
         int24 tikUpper;
     }
 
+    function _beforeAddLiquidity(
+        address,
+        PoolKey calldata,
+        IPoolManager.ModifyLiquidityParams calldata,
+        bytes calldata hookData
+    ) internal override returns (bytes4) {
+        // TODO:
+        // Use struct for hookData
+
+        return this.beforeAddLiquidity.selector;
+    }
+
     function _afterAddLiquidity(
         address,
         PoolKey calldata,
@@ -69,18 +81,6 @@ contract Jackpot is BaseHook {
         JackpotLPParams memory data = abi.decode(hookData, (JackpotLPParams));
         // if len(
         return (this.afterAddLiquidity.selector, BalanceDelta.wrap(0));
-    }
-
-    function _beforeAddLiquidity(
-        address,
-        PoolKey calldata,
-        IPoolManager.ModifyLiquidityParams calldata,
-        bytes calldata hookData
-    ) internal override returns (bytes4) {
-        // TODO:
-        // Use struct for hookData
-
-        return this.beforeAddLiquidity.selector;
     }
 
     function _beforeRemoveLiquidity(
