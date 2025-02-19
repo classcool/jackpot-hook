@@ -59,11 +59,11 @@ contract Jackpot is BaseHook {
 
     function _beforeInitialize(address, PoolKey calldata key, uint160) internal pure override returns (bytes4) {
         // TODO:
-        // 1. Check that pool has a dynamic Fee
+        // 1. Check pool has a dynamic Fee enabled
         if (key.fee != 0x800000) revert DynamicFeeNotSet(key.fee);
 
-        // Otional: Choose if currency0 should always be ETH
-        // require(key.currency0 == Currency.wrap(address(0)), "Only ETH pools allowed.");
+        // 2. Feature: Check for ETH as currency0
+        require(key.currency0 == Currency.wrap(address(0)), "Non Native pools not supported.");
 
         return this.beforeInitialize.selector;
     }

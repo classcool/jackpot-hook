@@ -24,8 +24,9 @@ contract JackpotTest is Deployers {
         // deploy v4 core
         deployFreshManagerAndRouters();
 
-        // deploy 2 currencies
-        (token0, token1) = deployMintAndApprove2Currencies();
+        // deploy currencies
+		token0 = Currency.wrap(address(0));
+        (token1) = deployMintAndApproveCurrency();
 
         // deploy our hook
         uint160 flags = uint160(
