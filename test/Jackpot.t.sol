@@ -38,12 +38,9 @@ contract JackpotTest is Deployers {
         hook = Jackpot(hookAddress);
 
         // initilize hook
-        (key,) =
-            initPool(token0, token1, hook, LPFeeLibrary.DYNAMIC_FEE_FLAG,SQRT_PRICE_1_1  );
+        (key,) = initPool(token0, token1, hook, LPFeeLibrary.DYNAMIC_FEE_FLAG, SQRT_PRICE_1_1);
     }
 
-    function test_addLiquidity() public { 
-
-	}
+    function test_addLiquidity() public { }
 
 }
