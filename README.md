@@ -4,7 +4,7 @@ A Uniswap v4 hook that allows a pool to use its liquidity for a 6/49 Lotto playe
 
 ## Core Logic
 
-- LPs use their liquidity between Lotto winnings and normal, earning shared fees from both
+- LPs use their liquidity between Lotto winnings and normal swaps, earning shared fees from both
 - Token holders use swaps to participate in a 6/49 Lotto
 
 ## Hooks Features
