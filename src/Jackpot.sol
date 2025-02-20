@@ -42,7 +42,7 @@ contract Jackpot is BaseHook {
         });
     }
 
-    function setDraw(LottoDraw memory draw) public returns (bool isValid) {
+    function setDraw(LottoDraw memory draw) internal returns (bool isValid) {
         // 1. check valid draw
         (isValid) = draw.isValidDraw();
 
@@ -68,10 +68,9 @@ contract Jackpot is BaseHook {
         return this.beforeInitialize.selector;
     }
 
-    struct JackpotLPParams {
-        address lpRewardee;
-        int24 tickLower;
-        int24 tikUpper;
+    struct LPLottoParams {
+        address withdraw;
+        uint24 rebalance;
     }
 
     function _beforeAddLiquidity(
@@ -81,8 +80,9 @@ contract Jackpot is BaseHook {
         bytes calldata hookData
     ) internal override returns (bytes4) {
         // TODO:
-        // Use struct for hookData
-
+        // 1. check HookData for LPLottoParams
+        // 2. check if LP wants to share liquidity into the lottery
+        // 3. check if LP wants to rebalance some LP liquidity into the Lotto
         return this.beforeAddLiquidity.selector;
     }
 
@@ -94,10 +94,15 @@ contract Jackpot is BaseHook {
         BalanceDelta,
         bytes calldata hookData
     ) internal override returns (bytes4, BalanceDelta) {
-        // TODO:
-        // 1. check hookData struct for JackPot liquidity
-        JackpotLPParams memory data = abi.decode(hookData, (JackpotLPParams));
-        // if len(
+        // TODO
+        // 1. check HookData for LPLottoParams
+        LPLottoParams memory data = abi.decode(hookData, (LPLottoParams));
+
+        if (data.rebalance != 0) {
+            // TODO
+            // 2. calculate lotto claim logic
+        }
+
         return (this.afterAddLiquidity.selector, BalanceDelta.wrap(0));
     }
 
@@ -107,7 +112,15 @@ contract Jackpot is BaseHook {
         IPoolManager.ModifyLiquidityParams calldata,
         bytes calldata
     ) internal override returns (bytes4) {
-        // TODO:
+        // TODO
+        // 1. check LP wish to rebalance LP poisition back to into the Lotto
+        // 2. calculate LP reward from lotto claim
+        //		- check if lotto is done
+        //		- check if LP is doing early withdral (surrender liquidity penalty)
+        // 3. calculate max LP withdrawal
+        //		- check what percentage LP is being withdrawn
+        //		- update max liquidity to withdraw
+
         return this.beforeRemoveLiquidity.selector;
     }
 
@@ -116,7 +129,9 @@ contract Jackpot is BaseHook {
         override
         returns (bytes4, BeforeSwapDelta, uint24)
     {
-        // TODO:
+        // TODO
+        // 1. check if user wants to make a lotto draw
+        // 2. update dynamic fee
         return (this.beforeSwap.selector, BeforeSwapDelta.wrap(0), 0);
     }
 
@@ -125,7 +140,8 @@ contract Jackpot is BaseHook {
         override
         returns (bytes4, int128)
     {
-        // TODO:
+        // TODO
+        // 1. update user lotto draws struct
         return (this.afterSwap.selector, 0);
     }
 
