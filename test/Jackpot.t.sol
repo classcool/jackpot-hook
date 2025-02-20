@@ -98,4 +98,21 @@ contract JackpotTest is Deployers {
         assertEq(Ball.unwrap(playerDraws[0].ball6), Ball.unwrap(lottoDraw.ball6));
     }
 
+    // TODO
+    // test ideas
+    //	- check for swap directions?
+    //		- what does zeroForOne true / false do to purchase price lotto
+    //		- what how should fees change with swap directions?
+    //	- Lotto price:
+    //		options:
+    //		1. constant lotto prices regardless of swap
+    //		2. dynamic Fees and lotto draw
+    //			- check for lp conentrated liquidity on ticks
+    //				- what effect do lps have on lotto tickets
+    //				- what about JIT liquidity, how can it affect lotto sale and jackpot withdrawals
+    //			- check for currenct tick influence in lotto purchase?
+    //				- it may be more expensive to purchase lotto in some ticks
+    //			- check for sqrt price
+    //				- should we use sqrt price, or ticks to calculate price of lotto
+
 }
