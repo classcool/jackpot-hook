@@ -133,7 +133,7 @@ contract Jackpot is BaseHook {
     {
         // TODO
         // 1. check if user wants to make a lotto draw
-        // 2. update dynamic fee
+        // 2. update dynamic fee before swap
         return (this.beforeSwap.selector, BeforeSwapDelta.wrap(0), 0);
     }
 
@@ -144,6 +144,9 @@ contract Jackpot is BaseHook {
     {
         // TODO
         // 1. update user lotto draws struct
+        // 2. check if user is a lotto winner
+        // 3. calculate user reward and transfer and close lotto
+        // 4. update LP ability to withdraw claims from closed lotto
         return (this.afterSwap.selector, 0);
     }
 
