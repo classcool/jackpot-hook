@@ -7,7 +7,7 @@ import { Ball } from "./types/Ball.sol";
 library Lotto {
 
     Ball constant ZERO_BALL = Ball.wrap(0x00);
-    Ball constant MAX_BALL = Ball.wrap(0x31); 
+    Ball constant MAX_BALL = Ball.wrap(0x31);
 
     function isValidDraw(LottoDraw memory draw) public pure returns (bool) {
         // 1. Check for repeat balls
