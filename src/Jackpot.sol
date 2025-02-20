@@ -69,7 +69,7 @@ contract Jackpot is BaseHook {
     }
 
     struct LPLottoParams {
-        address withdraw;
+        bool withdraw;
         uint24 rebalance;
     }
 
@@ -79,8 +79,10 @@ contract Jackpot is BaseHook {
         IPoolManager.ModifyLiquidityParams calldata,
         bytes calldata hookData
     ) internal override returns (bytes4) {
-        // TODO:
         // 1. check HookData for LPLottoParams
+        LPLottoParams memory data = abi.decode(hookData, (LPLottoParams));
+
+        // TODO
         // 2. check if LP wants to share liquidity into the lottery
         // 3. check if LP wants to rebalance some LP liquidity into the Lotto
         return this.beforeAddLiquidity.selector;
@@ -94,14 +96,11 @@ contract Jackpot is BaseHook {
         BalanceDelta,
         bytes calldata hookData
     ) internal override returns (bytes4, BalanceDelta) {
-        // TODO
         // 1. check HookData for LPLottoParams
         LPLottoParams memory data = abi.decode(hookData, (LPLottoParams));
 
-        if (data.rebalance != 0) {
-            // TODO
-            // 2. calculate lotto claim logic
-        }
+        // TODO
+        // 2. update lotto claim logic
 
         return (this.afterAddLiquidity.selector, BalanceDelta.wrap(0));
     }
@@ -110,14 +109,17 @@ contract Jackpot is BaseHook {
         address,
         PoolKey calldata,
         IPoolManager.ModifyLiquidityParams calldata,
-        bytes calldata
+        bytes calldata hookData
     ) internal override returns (bytes4) {
+        // 1. check HookData for LPLottoParams
+        LPLottoParams memory data = abi.decode(hookData, (LPLottoParams));
+
         // TODO
-        // 1. check LP wish to rebalance LP poisition back to into the Lotto
-        // 2. calculate LP reward from lotto claim
+        // 2. check LP wish to rebalance LP poisition back to into the Lotto
+        // 3. calculate LP reward from lotto claim
         //		- check if lotto is done
         //		- check if LP is doing early withdral (surrender liquidity penalty)
-        // 3. calculate max LP withdrawal
+        // 4. calculate max LP withdrawal
         //		- check what percentage LP is being withdrawn
         //		- update max liquidity to withdraw
 
