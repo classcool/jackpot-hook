@@ -25,14 +25,14 @@ contract JackpotTest is Deployers {
     Currency token1;
 
     function setUp() public {
-        // deploy v4 core
+        // 1. deploy v4 core
         deployFreshManagerAndRouters();
 
-        // deploy currencies
+        // 2. deploy currencies
         token0 = Currency.wrap(address(0));
         (token1) = deployMintAndApproveCurrency();
 
-        // deploy our hook
+        // 3. deploy our hook
         uint160 flags = uint160(
             Hooks.BEFORE_INITIALIZE_FLAG | Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.AFTER_ADD_LIQUIDITY_FLAG
                 | Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG | Hooks.BEFORE_REMOVE_LIQUIDITY_FLAG
@@ -42,10 +42,10 @@ contract JackpotTest is Deployers {
         deployCodeTo("Jackpot.sol", abi.encode(manager), hookAddress);
         hook = Jackpot(hookAddress);
 
-        // initilize hook
+        // 4. initilize hook
         (key,) = initPool(token0, token1, hook, LPFeeLibrary.DYNAMIC_FEE_FLAG, SQRT_PRICE_1_1);
 
-        // add liquidity from -min_tick to +60 tick range
+        // 5. add liquidity
         modifyLiquidityRouter.modifyLiquidity{ value: 299535495591078094 }(
             key,
             IPoolManager.ModifyLiquidityParams({
@@ -62,6 +62,7 @@ contract JackpotTest is Deployers {
         // 1. set up user
         address player = makeAddr("user");
 
+        // 2. create lotto draw
         LottoDraw memory lottoDraw = LottoDraw({
             ball1: Ball.wrap(1),
             ball2: Ball.wrap(2),
@@ -71,6 +72,7 @@ contract JackpotTest is Deployers {
             ball6: Ball.wrap(6)
         });
 
+        // 3. create swap params
         IPoolManager.SwapParams memory params = IPoolManager.SwapParams({
             zeroForOne: false,
             amountSpecified: 1 ether,
@@ -79,11 +81,14 @@ contract JackpotTest is Deployers {
         PoolSwapTest.TestSettings memory testSettings =
             PoolSwapTest.TestSettings({ takeClaims: false, settleUsingBurn: false });
 
+        // 4. create lotto params
         Jackpot.SwapLottoParams memory lottoParams = Jackpot.SwapLottoParams({ owner: player, draw: lottoDraw });
-
         bytes memory hookData = abi.encode(lottoParams);
 
+        // 5. user performs swap
         swapRouter.swap(key, params, testSettings, hookData);
+
+        // 6. confirm lotto submitted for user
         LottoDraw[32] memory playerDraws = hook.getDraw(key.toId(), player);
         assertEq(Ball.unwrap(playerDraws[0].ball1), Ball.unwrap(lottoDraw.ball1));
         assertEq(Ball.unwrap(playerDraws[0].ball2), Ball.unwrap(lottoDraw.ball2));
