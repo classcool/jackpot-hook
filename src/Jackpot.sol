@@ -6,6 +6,7 @@ import { LottoDraw } from "./LottoDraw.sol";
 import { IPoolManager } from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 import { PoolKey } from "@uniswap/v4-core/src/types/PoolKey.sol";
 import { Hooks } from "v4-core/libraries/Hooks.sol";
+import { TickMath } from "v4-core/libraries/TickMath.sol";
 import { BalanceDelta } from "v4-core/types/BalanceDelta.sol";
 import { BeforeSwapDelta } from "v4-core/types/BeforeSwapDelta.sol";
 import { Currency } from "v4-core/types/Currency.sol";
@@ -22,6 +23,8 @@ contract Jackpot is BaseHook {
     event NewLottoDraw(address player, LottoDraw indexed draw);
 
     error DynamicFeeNotSet(uint24 fee);
+    error NonNativePoolFeatureError(address token);
+    error MinSqrtPriceX96FeatureError(uint160 sqrtPricex96);
 
     function getHookPermissions() public pure override returns (Hooks.Permissions memory) {
         return Hooks.Permissions({
@@ -57,13 +60,23 @@ contract Jackpot is BaseHook {
         return draws[user];
     }
 
-    function _beforeInitialize(address, PoolKey calldata key, uint160) internal pure override returns (bytes4) {
+    function _beforeInitialize(address, PoolKey calldata key, uint160 sqrtPricex96)
+        internal
+        pure
+        override
+        returns (bytes4)
+    {
         // TODO:
         // 1. Check pool has a dynamic Fee enabled
         if (key.fee != 0x800000) revert DynamicFeeNotSet(key.fee);
 
-        // 2. Feature: Check for ETH as currency0
-        require(key.currency0 == Currency.wrap(address(0)), "Non Native pools not supported.");
+        // 2. Experimental feature: Native curreny feature only
+        if (Currency.unwrap(key.currency0) != address(0)) {
+            revert NonNativePoolFeatureError(Currency.unwrap(key.currency0));
+        }
+
+        // 3. Experimental feature: start price at MIN_SQRT_PRICE
+        if (sqrtPricex96 != TickMath.MIN_SQRT_PRICE) revert MinSqrtPriceX96FeatureError(sqrtPricex96);
 
         return this.beforeInitialize.selector;
     }
