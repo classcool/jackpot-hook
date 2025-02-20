@@ -33,7 +33,7 @@ contract Jackpot is BaseHook {
             beforeAddLiquidity: true,
             afterAddLiquidity: true,
             beforeRemoveLiquidity: true,
-            afterRemoveLiquidity: false,
+            afterRemoveLiquidity: true,
             beforeSwap: true,
             afterSwap: true,
             beforeDonate: false,
@@ -113,7 +113,7 @@ contract Jackpot is BaseHook {
         LPLottoParams memory data = abi.decode(hookData, (LPLottoParams));
 
         // TODO
-        // 2. update lotto claim logic
+        // 2. update LP lotto claims
 
         return (this.afterAddLiquidity.selector, BalanceDelta.wrap(0));
     }
@@ -137,6 +137,23 @@ contract Jackpot is BaseHook {
         //		- update max liquidity to withdraw
 
         return this.beforeRemoveLiquidity.selector;
+    }
+
+    function _afterRemoveLiquidity(
+        address,
+        PoolKey calldata,
+        IPoolManager.ModifyLiquidityParams calldata,
+        BalanceDelta,
+        BalanceDelta,
+        bytes calldata hookData
+    ) internal override returns (bytes4, BalanceDelta) {
+        // 1. check HookData for LPParams
+        LPLottoParams memory data = abi.decode(hookData, (LPLottoParams));
+
+        // TODO
+        // 1. update remaining LP lotto claims
+
+        return (this.afterRemoveLiquidity.selector, BalanceDelta.wrap(0));
     }
 
     function _beforeSwap(address, PoolKey calldata, IPoolManager.SwapParams calldata, bytes calldata)
