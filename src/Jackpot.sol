@@ -1,30 +1,39 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.24;
 
+import { DynamicFeeSlot } from "./DynamicFeeSlot.sol";
 import { Lotto } from "./Lotto.sol";
 import { LottoDraw } from "./LottoDraw.sol";
+import { Ball } from "./types/Ball.sol";
 import { IPoolManager } from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 import { PoolKey } from "@uniswap/v4-core/src/types/PoolKey.sol";
 import { Hooks } from "v4-core/libraries/Hooks.sol";
+import { LPFeeLibrary } from "v4-core/libraries/LPFeeLibrary.sol";
+import { StateLibrary } from "v4-core/libraries/StateLibrary.sol";
 import { TickMath } from "v4-core/libraries/TickMath.sol";
 import { BalanceDelta } from "v4-core/types/BalanceDelta.sol";
 import { BeforeSwapDelta } from "v4-core/types/BeforeSwapDelta.sol";
 import { Currency } from "v4-core/types/Currency.sol";
+import { PoolId } from "v4-core/types/PoolId.sol";
 import { BaseHook } from "v4-periphery/src/utils/BaseHook.sol";
 
 contract Jackpot is BaseHook {
 
     using Lotto for LottoDraw;
+    using LPFeeLibrary for uint24;
+    using DynamicFeeSlot for uint24;
+    using StateLibrary for IPoolManager;
 
     constructor(IPoolManager _manager) BaseHook(_manager) { }
 
-    mapping(address => LottoDraw) public draws;
+    mapping(PoolId => mapping(address => LottoDraw[32])) public draws;
 
-    event NewLottoDraw(address player, LottoDraw indexed draw);
+    event NewLottoDraw(LottoDraw indexed draw);
 
     error DynamicFeeNotSet(uint24 fee);
     error NonNativePoolFeatureError(address token);
     error MinSqrtPriceX96FeatureError(uint160 sqrtPricex96);
+    error MaxDrawsCoolCoolCool();
 
     function getHookPermissions() public pure override returns (Hooks.Permissions memory) {
         return Hooks.Permissions({
@@ -45,19 +54,8 @@ contract Jackpot is BaseHook {
         });
     }
 
-    function setDraw(LottoDraw memory draw) internal returns (bool isValid) {
-        // 1. check valid draw
-        (isValid) = draw.isValidDraw();
-
-        // 2. update user draw
-        if (isValid) {
-            draws[msg.sender] = draw;
-            emit NewLottoDraw(msg.sender, draw);
-        }
-    }
-
-    function getDraw(address user) public view returns (LottoDraw memory) {
-        return draws[user];
+    function getDraw(PoolId poolID, address owner) public view returns (LottoDraw[32] memory) {
+        return draws[poolID][owner];
     }
 
     function _beforeInitialize(address, PoolKey calldata key, uint160 sqrtPricex96)
@@ -76,7 +74,7 @@ contract Jackpot is BaseHook {
         }
 
         // 3. Experimental feature: start price at MIN_SQRT_PRICE
-        if (sqrtPricex96 != TickMath.MIN_SQRT_PRICE) revert MinSqrtPriceX96FeatureError(sqrtPricex96);
+        // if (sqrtPricex96 != TickMath.MIN_SQRT_PRICE) revert MinSqrtPriceX96FeatureError(sqrtPricex96);
 
         return this.beforeInitialize.selector;
     }
@@ -93,11 +91,13 @@ contract Jackpot is BaseHook {
         bytes calldata hookData
     ) internal override returns (bytes4) {
         // 1. check HookData for LPLottoParams
-        LPLottoParams memory data = abi.decode(hookData, (LPLottoParams));
+        if (hookData.length > 0) {
+            LPLottoParams memory data = abi.decode(hookData, (LPLottoParams));
 
-        // TODO
-        // 2. check if LP wants to share liquidity into the lottery
-        // 3. check if LP wants to rebalance some LP liquidity into the Lotto
+            // TODO
+            // 2. check if LP wants to share liquidity into the lottery
+            // 3. check if LP wants to rebalance some LP liquidity into the Lotto
+        }
         return this.beforeAddLiquidity.selector;
     }
 
@@ -110,10 +110,14 @@ contract Jackpot is BaseHook {
         bytes calldata hookData
     ) internal override returns (bytes4, BalanceDelta) {
         // 1. check HookData for LPLottoParams
-        LPLottoParams memory data = abi.decode(hookData, (LPLottoParams));
+        if (hookData.length > 0) {
+            LPLottoParams memory data = abi.decode(hookData, (LPLottoParams));
 
-        // TODO
-        // 2. update LP lotto claims
+            // TODO
+            // 2. update LP lotto stake
+            //		- calculate intial stake estimate based of lp position
+            //		- (,,) = manager.getPositionInfo()
+        }
 
         return (this.afterAddLiquidity.selector, BalanceDelta.wrap(0));
     }
@@ -125,16 +129,22 @@ contract Jackpot is BaseHook {
         bytes calldata hookData
     ) internal override returns (bytes4) {
         // 1. check HookData for LPLottoParams
-        LPLottoParams memory data = abi.decode(hookData, (LPLottoParams));
 
-        // TODO
-        // 2. check LP wish to rebalance LP poisition back to into the Lotto
-        // 3. calculate LP reward from lotto claim
-        //		- check if lotto is done
-        //		- check if LP is doing early withdral (surrender liquidity penalty)
-        // 4. calculate max LP withdrawal
-        //		- check what percentage LP is being withdrawn
-        //		- update max liquidity to withdraw
+        if (hookData.length > 0) {
+            LPLottoParams memory data = abi.decode(hookData, (LPLottoParams));
+
+            // TODO
+            // 2. check LP wish to rebalance LP poisition back to into the Lotto
+            // 3. calculate LP reward from lotto claim
+            //		- check if lotto is done
+            //		- check if LP is doing early withdral (surrender liquidity penalty)
+            // 4. calculate max LP withdrawal
+            //		- check what percentage LP is being withdrawn
+            //		- update max liquidity to withdraw
+            //		example:
+            //		- (,,,) = manager.get.getPositionInfo()
+            //		- (,,,) = manager.get.getTickLiquidity()
+        }
 
         return this.beforeRemoveLiquidity.selector;
     }
@@ -148,35 +158,105 @@ contract Jackpot is BaseHook {
         bytes calldata hookData
     ) internal override returns (bytes4, BalanceDelta) {
         // 1. check HookData for LPParams
-        LPLottoParams memory data = abi.decode(hookData, (LPLottoParams));
+        if (hookData.length > 0) {
+            LPLottoParams memory data = abi.decode(hookData, (LPLottoParams));
 
-        // TODO
-        // 1. update remaining LP lotto claims
+            // TODO
+            // 1. update relevant LP lotto randsom bassed on liquidity
+            //		- (,,,) = manager.get.getPositionInfo()
+            //		- (,,,) = manager.get.getTickLiquidity()
+        }
 
         return (this.afterRemoveLiquidity.selector, BalanceDelta.wrap(0));
     }
 
-    function _beforeSwap(address, PoolKey calldata, IPoolManager.SwapParams calldata, bytes calldata)
+    struct SwapLottoParams {
+        address owner;
+        LottoDraw draw;
+    }
+
+    function _setDraw(PoolId poolID, SwapLottoParams memory params) internal returns (bool isValid) {
+        // 1. check valid draw
+        (isValid) = params.draw.isValidDraw();
+
+        // 2. update user draw
+        if (isValid) {
+            if (Ball.unwrap(draws[poolID][params.owner][0].ball1) == 0) {
+                draws[poolID][params.owner][0] = params.draw;
+            } else {
+                if (Ball.unwrap(draws[poolID][params.owner][31].ball1) != 0) {
+                    revert MaxDrawsCoolCoolCool();
+                }
+                for (uint8 i = 1; i < 32; i++) {
+                    if (Ball.unwrap(draws[poolID][params.owner][i].ball1) == 0) {
+                        draws[poolID][params.owner][i] = params.draw;
+                    }
+                }
+            }
+            emit NewLottoDraw(params.draw);
+        }
+    }
+
+    function _calculateLottoFee() internal pure returns (uint24 lottoFee) {
+        // TODO
+        // 1. calculate draw fee using information from the pool
+        //		examples:
+        //		- (,,,) = manager.getSlot0();
+
+        return LPFeeLibrary.MAX_LP_FEE / 10;
+    }
+
+    function _beforeSwap(address, PoolKey calldata key, IPoolManager.SwapParams calldata, bytes calldata hookData)
         internal
         override
         returns (bytes4, BeforeSwapDelta, uint24)
     {
-        // TODO
-        // 1. check if user wants to make a lotto draw
-        // 2. update dynamic fee before swap
+        // 1. check HookData for lotto params
+        if (hookData.length > 0) {
+            SwapLottoParams memory data = abi.decode(hookData, (SwapLottoParams));
+
+            // 2. save current dynamic fee to reset fee afterswap
+            //		- (,,,) = manager.getSlot0(0)
+            (uint160 sqrtPriceX96, int24 tick, uint24 protocolFee, uint24 lpFee) = poolManager.getSlot0(key.toId());
+            lpFee.setPreviousDynamicFee();
+
+            // 3. update dynamic fee before swap
+            // TODO: calculate fee based on number draw
+            uint24 drawFee = _calculateLottoFee();
+            uint24 newFee = drawFee;
+            poolManager.updateDynamicLPFee(key, newFee);
+
+            // 4. create lotto entry
+            _setDraw(key.toId(), data);
+        }
+
         return (this.beforeSwap.selector, BeforeSwapDelta.wrap(0), 0);
     }
 
-    function _afterSwap(address, PoolKey calldata, IPoolManager.SwapParams calldata, BalanceDelta, bytes calldata)
-        internal
-        override
-        returns (bytes4, int128)
-    {
-        // TODO
-        // 1. update user lotto draws struct
-        // 2. check if user is a lotto winner
-        // 3. calculate user reward and transfer and close lotto
-        // 4. update LP ability to withdraw claims from closed lotto
+    function _afterSwap(
+        address,
+        PoolKey calldata key,
+        IPoolManager.SwapParams calldata,
+        BalanceDelta,
+        bytes calldata hookData
+    ) internal override returns (bytes4, int128) {
+        // 1. check HookData for lotto params
+        if (hookData.length > 0) {
+            SwapLottoParams memory data = abi.decode(hookData, (SwapLottoParams));
+
+            // 2. update dynamic fee after swap
+            (uint24 previousDynamicFee) = DynamicFeeSlot.getPreviousDynamicFee();
+            uint24 newFee = previousDynamicFee;
+            poolManager.updateDynamicLPFee(key, newFee);
+
+            // TODO
+            // 3. update user lotto draws struct
+            // 4. check if user is a lotto winner
+            // 5. calculate lotto reward
+            //		- transfer reward
+            //		- close lotto
+            //		- update LP ability to withdraw liquidity earnings
+        }
         return (this.afterSwap.selector, 0);
     }
 
