@@ -2,8 +2,7 @@
 pragma solidity ^0.8.24;
 
 import { Jackpot } from "../src/Jackpot.sol";
-import { Lotto } from "../src/Lotto.sol";
-import { LottoDraw } from "../src/LottoDraw.sol";
+import { Lotto , LottoDraw } from "../src/Lotto.sol";
 import { Ball } from "../src/types/Ball.sol";
 import { Deployers } from "@uniswap/v4-core/test/utils/Deployers.sol";
 import { Test, console } from "forge-std/Test.sol";
@@ -18,19 +17,15 @@ import { PoolKey } from "v4-core/types/PoolKey.sol";
 
 contract JackpotTest is Deployers {
 
-    MockERC20 token;
     Jackpot hook;
-
-    Currency token0;
-    Currency token1;
 
     function setUp() public {
         // 1. deploy v4 core
         deployFreshManagerAndRouters();
 
         // 2. deploy currencies
-        token0 = Currency.wrap(address(0));
-        (token1) = deployMintAndApproveCurrency();
+        currency0 = Currency.wrap(address(0));
+        (currency1) = deployMintAndApproveCurrency();
 
         // 3. deploy our hook
         uint160 flags = uint160(
@@ -40,18 +35,18 @@ contract JackpotTest is Deployers {
         );
         address hookAddress = address(flags);
         deployCodeTo("Jackpot.sol", abi.encode(manager), hookAddress);
-        hook = Jackpot(hookAddress);
+        hook = Jackpot(payable(hookAddress));
 
         // 4. initilize hook
-        (key,) = initPool(token0, token1, hook, LPFeeLibrary.DYNAMIC_FEE_FLAG, SQRT_PRICE_1_1);
+        (key,) = initPool(currency0, currency1, hook, LPFeeLibrary.DYNAMIC_FEE_FLAG, SQRT_PRICE_1_1);
 
         // 5. add liquidity
-        modifyLiquidityRouter.modifyLiquidity{ value: 299535495591078094 }(
+        modifyLiquidityRouter.modifyLiquidity{ value: 0.03 ether }(
             key,
             IPoolManager.ModifyLiquidityParams({
                 tickLower: -60,
                 tickUpper: 60,
-                liquidityDelta: 100 ether,
+                liquidityDelta: 10 ether,
                 salt: bytes32(0)
             }),
             ZERO_BYTES
@@ -60,33 +55,48 @@ contract JackpotTest is Deployers {
 
     function test_CanSubmitLottoDrawDuringTokenSwap() public {
         // 1. set up user
-        address player = makeAddr("user");
+        address player = makeAddr("Player");
+        deal(Currency.unwrap(currency1), player, 10 ether);
+
+        // logs
+        uint256 balance0Before = currency0.balanceOfSelf();
+        uint256 balance1Before = currency1.balanceOfSelf();
+        console.log("currency0 contract before", balance0Before);
+        console.log("currency1 contract before", balance1Before);
+
+        uint256 balance0PlayerBefore = currency0.balanceOf(player);
+        uint256 balance1PlayerBefore = currency1.balanceOf(player);
+        console.log("currency0 player before", balance0PlayerBefore);
+        console.log("currency1 player before", balance1PlayerBefore);
 
         // 2. create lotto draw
         LottoDraw memory lottoDraw = LottoDraw({
-            ball1: Ball.wrap(1),
-            ball2: Ball.wrap(2),
-            ball3: Ball.wrap(3),
-            ball4: Ball.wrap(4),
-            ball5: Ball.wrap(5),
-            ball6: Ball.wrap(6)
+            ball1: Ball.wrap(0x01),
+            ball2: Ball.wrap(0x02),
+            ball3: Ball.wrap(0x03),
+            ball4: Ball.wrap(0x04),
+            ball5: Ball.wrap(0x05),
+            ball6: Ball.wrap(0x06)
         });
 
         // 3. create swap params
         IPoolManager.SwapParams memory params = IPoolManager.SwapParams({
             zeroForOne: false,
-            amountSpecified: 1 ether,
-            sqrtPriceLimitX96: 79228162514264337593543950347
+            amountSpecified: -1 ether,
+            sqrtPriceLimitX96: TickMath.MAX_SQRT_PRICE - 1
         });
         PoolSwapTest.TestSettings memory testSettings =
             PoolSwapTest.TestSettings({ takeClaims: false, settleUsingBurn: false });
 
         // 4. create lotto params
-        Jackpot.SwapLottoParams memory lottoParams = Jackpot.SwapLottoParams({ owner: player, draw: lottoDraw });
+        Jackpot.SwapLottoParams memory lottoParams = Jackpot.SwapLottoParams({ player: player, draw: lottoDraw });
         bytes memory hookData = abi.encode(lottoParams);
 
         // 5. user performs swap
+        // vm.startPrank(player);
+        // MockERC20(Currency.unwrap(currency1)).approve(address(swapRouter), 10 ether);
         swapRouter.swap(key, params, testSettings, hookData);
+        // vm.stopPrank();
 
         // 6. confirm lotto submitted for user
         LottoDraw[32] memory playerDraws = hook.getDraw(key.toId(), player);
@@ -96,6 +106,16 @@ contract JackpotTest is Deployers {
         assertEq(Ball.unwrap(playerDraws[0].ball4), Ball.unwrap(lottoDraw.ball4));
         assertEq(Ball.unwrap(playerDraws[0].ball5), Ball.unwrap(lottoDraw.ball5));
         assertEq(Ball.unwrap(playerDraws[0].ball6), Ball.unwrap(lottoDraw.ball6));
+
+        uint256 balance0ContractAfter = currency0.balanceOfSelf();
+        uint256 balance1ContractAfter = currency1.balanceOfSelf();
+        console.log("currency0 contract after", balance0ContractAfter);
+        console.log("currency1 contract after", balance1ContractAfter);
+
+        uint256 balance0PlayerAfter = currency0.balanceOf(player);
+        uint256 balance1PlayerAfter = currency1.balanceOf(player);
+        console.log("currency0 player after", balance0PlayerAfter);
+        console.log("currency1 player after", balance1PlayerAfter);
     }
 
     // TODO
