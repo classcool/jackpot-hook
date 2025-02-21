@@ -2,8 +2,7 @@
 pragma solidity ^0.8.24;
 
 import { DynamicFeeSlot } from "./DynamicFeeSlot.sol";
-import { Lotto } from "./Lotto.sol";
-import { LottoDraw } from "./LottoDraw.sol";
+import { Lotto, LottoDraw } from "./Lotto.sol";
 import { Ball } from "./types/Ball.sol";
 import { IPoolManager } from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 import { PoolKey } from "@uniswap/v4-core/src/types/PoolKey.sol";
@@ -19,7 +18,6 @@ import { BaseHook } from "v4-periphery/src/utils/BaseHook.sol";
 
 contract Jackpot is BaseHook {
 
-    using Lotto for LottoDraw;
     using LPFeeLibrary for uint24;
     using DynamicFeeSlot for uint24;
     using StateLibrary for IPoolManager;
@@ -28,7 +26,9 @@ contract Jackpot is BaseHook {
 
     mapping(PoolId => mapping(address => LottoDraw[32])) public draws;
 
-    event NewLottoDraw(LottoDraw indexed draw);
+    //   | lottoDraw |           |  player address   |
+    // 0x010203040506000000000000ffffffffffffffffffff
+    event NewLottoDraw(bytes32 indexed draw);
 
     error DynamicFeeNotSet(uint24 fee);
     error NonNativePoolFeatureError(address token);
@@ -171,7 +171,7 @@ contract Jackpot is BaseHook {
     }
 
     struct SwapLottoParams {
-        address owner;
+        address player;
         LottoDraw draw;
     }
 
@@ -181,19 +181,19 @@ contract Jackpot is BaseHook {
 
         // 2. update user draw
         if (isValid) {
-            if (Ball.unwrap(draws[poolID][params.owner][0].ball1) == 0) {
-                draws[poolID][params.owner][0] = params.draw;
+            if (Ball.unwrap(draws[poolID][params.player][0].ball1) == 0) {
+                draws[poolID][params.player][0] = params.draw;
             } else {
-                if (Ball.unwrap(draws[poolID][params.owner][31].ball1) != 0) {
+                if (Ball.unwrap(draws[poolID][params.player][31].ball1) != 0) {
                     revert MaxDrawsCoolCoolCool();
                 }
                 for (uint8 i = 1; i < 32; i++) {
-                    if (Ball.unwrap(draws[poolID][params.owner][i].ball1) == 0) {
-                        draws[poolID][params.owner][i] = params.draw;
+                    if (Ball.unwrap(draws[poolID][params.player][i].ball1) == 0) {
+                        draws[poolID][params.player][i] = params.draw;
                     }
                 }
             }
-            emit NewLottoDraw(params.draw);
+            emit NewLottoDraw(bytes32(uint256(uint160(params.player))) | params.draw.toPackedBytes());
         }
     }
 
