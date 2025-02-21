@@ -236,10 +236,16 @@ contract Jackpot is BaseHook {
     function _afterSwap(
         address,
         PoolKey calldata key,
-        IPoolManager.SwapParams calldata,
-        BalanceDelta,
+        IPoolManager.SwapParams calldata params,
+        BalanceDelta delta,
         bytes calldata hookData
     ) internal override returns (bytes4, int128) {
+        // 0. check for unspecified amount
+        int128 unspecifiedAmount = params.zeroForOne ? delta.amount1() : delta.amount0();
+        Currency currency = params.zeroForOne ? key.currency1 : key.currency0;
+        // 0.1 take amount from poolmanager
+        // poolManager.take(currency, address(this), uint256(int256(unspecifiedAmount)));
+
         // 1. check HookData for lotto params
         if (hookData.length > 0) {
             SwapLottoParams memory data = abi.decode(hookData, (SwapLottoParams));
@@ -257,7 +263,9 @@ contract Jackpot is BaseHook {
             //		- close lotto
             //		- update LP ability to withdraw liquidity earnings
         }
-        return (this.afterSwap.selector, 0);
+        return (this.afterSwap.selector, unspecifiedAmount);
     }
+
+    receive() external payable { }
 
 }
