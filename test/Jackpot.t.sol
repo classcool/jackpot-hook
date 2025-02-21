@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import { Jackpot } from "../src/Jackpot.sol";
-import { Lotto , LottoDraw } from "../src/Lotto.sol";
+import { Lotto, LottoDraw } from "../src/Lotto.sol";
 import { Ball } from "../src/types/Ball.sol";
 import { Deployers } from "@uniswap/v4-core/test/utils/Deployers.sol";
 import { Test, console } from "forge-std/Test.sol";
