@@ -37,7 +37,7 @@ contract LottoTest is Test {
         assertEq(abi.encode(lottoDraw), abi.encode(lottoDrawExpected));
     }
 
-    function test_LottoValidLottoDrawRepeatBall() public pure {
+    function test_LottoDrawInvalidRepeatBall() public pure {
         LottoDraw memory lottoDraw = LottoDraw({
             ball1: Ball.wrap(0x01),
             ball2: Ball.wrap(0x02),
@@ -49,7 +49,7 @@ contract LottoTest is Test {
         assertFalse(lottoDraw.isValidDraw());
     }
 
-    function test_LottoValidLottoDrawOutOfBoundBall() public pure {
+    function test_LottoDrawInvalidOutOfBoundBall() public pure {
         LottoDraw memory lottoDraw = LottoDraw({
             ball1: Ball.wrap(0x01),
             ball2: Ball.wrap(0x02),
