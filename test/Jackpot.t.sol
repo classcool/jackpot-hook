@@ -15,6 +15,8 @@ import { TickMath } from "v4-core/libraries/TickMath.sol";
 import { PoolSwapTest } from "v4-core/test/PoolSwapTest.sol";
 import { PoolKey } from "v4-core/types/PoolKey.sol";
 
+/// @notice JackpotTest contract
+/// @notice Test for deployment and swap logic when submitting lotto draw
 contract JackpotTest is Deployers {
 
     Jackpot hook;

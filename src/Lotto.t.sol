@@ -5,6 +5,8 @@ import { Lotto, LottoDraw } from "./Lotto.sol";
 import { Ball } from "./types/Ball.sol";
 import { Test, console } from "forge-std/Test.sol";
 
+/// @notice LottoTest contract
+/// @notice Tests for Lotto balls drawn by user
 contract LottoTest is Test {
 
     function setUp() public { }

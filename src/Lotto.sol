@@ -14,6 +14,8 @@ struct LottoDraw {
     Ball ball6;
 }
 
+/// @notice Lotto library
+/// @notice Validates lotto balls drawn by user and provides helper methods to cast LottoDraw struct
 library Lotto {
 
     Ball constant ZERO_BALL = Ball.wrap(0x00);

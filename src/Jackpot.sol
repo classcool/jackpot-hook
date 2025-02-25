@@ -16,6 +16,10 @@ import { Currency } from "v4-core/types/Currency.sol";
 import { PoolId } from "v4-core/types/PoolId.sol";
 import { BaseHook } from "v4-periphery/src/utils/BaseHook.sol";
 
+/// @notice Jackpot contract
+/// @notice A Uniswap V4 hook allowing swappers to play the lotto on uniswap
+/// @notice Hook contract takes TICKET_PRICE_PER_LOTTO_DRAW fee in ETH if user subits a LottoDraw
+/// @notice LPs earn fees for non-lottery swaps, and share in revenue from lotto
 contract Jackpot is BaseHook {
 
     using LPFeeLibrary for uint24;
@@ -26,7 +30,7 @@ contract Jackpot is BaseHook {
 
     mapping(PoolId => mapping(address => LottoDraw[32])) public draws;
 
-    uint256 immutable lottoPerTicket = 0.001 ether;
+    uint256 immutable TICKET_PRICE_PER_LOTTO_DRAW = 0.001 ether;
 
     //   | lottoDraw |           |  player address   |
     // 0x010203040506000000000000ffffffffffffffffffff
@@ -220,9 +224,9 @@ contract Jackpot is BaseHook {
 
     // pays fo user lotto ticket
     function _takeLottoPurchase(IPoolManager.SwapParams calldata swapParams) internal returns (int256 amountToSwap) {
-        if (uint256(swapParams.amountSpecified) < lottoPerTicket) revert NotEnoughFundsToPlayLOTTO();
-        if (swapParams.amountSpecified < 0 && uint256(swapParams.amountSpecified) >= lottoPerTicket) {
-            return swapParams.amountSpecified + int256(lottoPerTicket);
+        if (uint256(swapParams.amountSpecified) < TICKET_PRICE_PER_LOTTO_DRAW) revert NotEnoughFundsToPlayLOTTO();
+        if (swapParams.amountSpecified < 0 && uint256(swapParams.amountSpecified) >= TICKET_PRICE_PER_LOTTO_DRAW) {
+            return swapParams.amountSpecified + int256(TICKET_PRICE_PER_LOTTO_DRAW);
         }
     }
 

@@ -13,7 +13,9 @@ import { TickMath } from "v4-core/libraries/TickMath.sol";
 import { PoolSwapTest } from "v4-core/test/PoolSwapTest.sol";
 import { PoolKey } from "v4-core/types/PoolKey.sol";
 
-contract TestERC6909 is Deployers {
+/// @notice TestOperator
+/// @notice Test for ERC6909 operator actions that allow v4 operator to tranfer tokens on behalf of user
+contract TestOperator is Deployers {
 
     uint256 tokenId = currency0.toId();
     address v4_user = makeAddr("v4_user");
