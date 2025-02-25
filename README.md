@@ -2,14 +2,6 @@
 
 A Uniswap v4 hook that allows a pool to use its liquidity for a 6/49 Lotto played by token holders and LPs
 
-## Test Dependencies
-
-- [uv4](github.com/mmsaki/uv4) - uniswap v4 python utils used for differential testing TickMath
-
-```sh
-pip install uv4
-```
-
 ## Core Logic
 
 - LPs use their liquidity between Lotto winnings and normal swaps, earning shared fees from both
@@ -24,6 +16,23 @@ pip install uv4
 - [ ] `beforeRemoveLiquidity()` - checks for LP Lottery participation
 - [ ] `beforeSwap()` - check is swapper is creating a Lottery Draw
 - [ ] `afterSwap()` - completes swap and lottery draw logic
+
+## Test Dependencies
+
+> [!IMPORTANT]
+> Please install necesssary dependency for differential tests to succeed
+
+- [uv4](github.com/mmsaki/uv4) - uniswap v4 python utils used for differential testing TickMath
+
+```sh
+pip install uv4
+```
+
+Run test
+
+```sh
+forge test
+```
 
 ## Lotto Draw
 
