@@ -5,48 +5,10 @@ import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 import { Test, console } from "forge-std/Test.sol";
 import { TickMath } from "v4-core/libraries/TickMath.sol";
 
-contract TickMathBase {
-
-    function getSqrtPriceAtTick(int24 tick) public pure returns (uint160) {
-        return TickMath.getSqrtPriceAtTick(tick);
-    }
-
-    // O(log N)
-    function square(uint128 x) public returns (uint256) {
-        uint256 res = 0;
-        uint256 temp = x;
-        while (temp > 0) {
-            if (temp & 1 == 1) {
-                res += x;
-            }
-            x <<= 1;
-            temp >>= 1;
-        }
-        return res;
-    }
-
-    function newGetSqrtPriceAtTick(int24 tick) public pure returns (uint160) {
-        // 1. price = 1.0001 ^ tick
-        // 2. sqrtPrice = sqrt(price)
-        // 3. sqrtPriceX96 = sqrtPrice * 2 ** 96
-
-        return 1;
-    }
-
-    function getTickAtSqrtPrice(uint160 sqrtPriceX96) public pure returns (int24) {
-        return TickMath.getTickAtSqrtPrice(sqrtPriceX96);
-    }
-
-    function minUsableTick() public pure returns (int24) {
-        return TickMath.minUsableTick(TickMath.MIN_TICK_SPACING);
-    }
-
-    function maxUsableTick() public pure returns (int24) {
-        return TickMath.maxUsableTick(TickMath.MIN_TICK_SPACING);
-    }
-
-}
-
+/// @title DifferentialTickMathTest
+/// @notice Differential test for TickMath
+/// @notice Must have https://github.com/mmsaki/uv4 installed
+/// @notice requires `pip install uv4` installed with python >= 3.10
 contract DifferentialTickMathTest is Test {
 
     using Strings for uint256;
@@ -97,13 +59,47 @@ contract DifferentialTickMathTest is Test {
 
     function testFuzzDifferential_get_tick_at_sqrt_price_x96(uint160 x) public {
         bound(x, TickMath.MIN_SQRT_PRICE, TickMath.MAX_SQRT_PRICE - 1);
-        vm.assume(x > TickMath.MIN_SQRT_PRICE);
+        vm.assume(x >= TickMath.MIN_SQRT_PRICE);
         vm.assume(x < TickMath.MAX_SQRT_PRICE);
 
         int24 a = ffi_get_tick_at_sqrt_price_x96(x);
         int24 b = t.getTickAtSqrtPrice(x);
         assertApproxEqAbs(a, b, 2 ** 0);
         // assertEq(a, b);
+    }
+
+}
+
+contract TickMathBase {
+
+    function getSqrtPriceAtTick(int24 tick) public pure returns (uint160) {
+        return TickMath.getSqrtPriceAtTick(tick);
+    }
+
+    function getTickAtSqrtPrice(uint160 sqrtPriceX96) public pure returns (int24) {
+        return TickMath.getTickAtSqrtPrice(sqrtPriceX96);
+    }
+
+    function minUsableTick() public pure returns (int24) {
+        return TickMath.minUsableTick(TickMath.MIN_TICK_SPACING);
+    }
+
+    function maxUsableTick() public pure returns (int24) {
+        return TickMath.maxUsableTick(TickMath.MIN_TICK_SPACING);
+    }
+
+    // O(log N)
+    function square(uint128 x) public returns (uint256) {
+        uint256 res = 0;
+        uint256 temp = x;
+        while (temp > 0) {
+            if (temp & 1 == 1) {
+                res += x;
+            }
+            x <<= 1;
+            temp >>= 1;
+        }
+        return res;
     }
 
 }
