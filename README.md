@@ -22,7 +22,7 @@ A Uniswap v4 hook that allows a pool to use its liquidity for a 6/49 Lotto playe
 > [!IMPORTANT]
 > Please install necesssary dependency for differential tests to succeed
 
-- [uv4](github.com/mmsaki/uv4) - uniswap v4 python utils used for differential testing TickMath
+- [uv4](https://github.com/mmsaki/uv4) - uniswap v4 python utils used for differential testing TickMath
 
 ```sh
 pip install uv4
