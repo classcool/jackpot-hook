@@ -2,6 +2,14 @@
 
 A Uniswap v4 hook that allows a pool to use its liquidity for a 6/49 Lotto played by token holders and LPs
 
+## Test Dependencies
+
+- [uv4](github.com/mmsaki/uv4) - uniswap v4 python utils used for differential testing TickMath
+
+```sh
+pip install uv4
+```
+
 ## Core Logic
 
 - LPs use their liquidity between Lotto winnings and normal swaps, earning shared fees from both
