@@ -26,14 +26,18 @@ contract Jackpot is BaseHook {
 
     mapping(PoolId => mapping(address => LottoDraw[32])) public draws;
 
+    uint256 immutable lottoPerTicket = 0.001 ether;
+
     //   | lottoDraw |           |  player address   |
     // 0x010203040506000000000000ffffffffffffffffffff
-    event NewLottoDraw(bytes32 indexed draw);
+    // event NewLottoDraw(bytes32 indexed draw);
+    event BallsEntryEvent(uint8 ball1, uint8 ball2, uint8 ball3, uint8 ball4, uint8 ball5, uint8 ball6);
 
     error DynamicFeeNotSet(uint24 fee);
     error NonNativePoolFeatureError(address token);
     error MinSqrtPriceX96FeatureError(uint160 sqrtPricex96);
     error MaxDrawsCoolCoolCool();
+    error NotEnoughFundsToPlayLOTTO();
 
     function getHookPermissions() public pure override returns (Hooks.Permissions memory) {
         return Hooks.Permissions({
@@ -47,8 +51,8 @@ contract Jackpot is BaseHook {
             afterSwap: true,
             beforeDonate: false,
             afterDonate: false,
-            beforeSwapReturnDelta: false,
-            afterSwapReturnDelta: false,
+            beforeSwapReturnDelta: true,
+            afterSwapReturnDelta: true,
             afterAddLiquidityReturnDelta: false,
             afterRemoveLiquidityReturnDelta: false
         });
@@ -68,7 +72,7 @@ contract Jackpot is BaseHook {
         // 1. Check pool has a dynamic Fee enabled
         if (key.fee != 0x800000) revert DynamicFeeNotSet(key.fee);
 
-        // 2. Experimental feature: Native curreny feature only
+        // 2. Feature: takes native curreny feature only
         if (Currency.unwrap(key.currency0) != address(0)) {
             revert NonNativePoolFeatureError(Currency.unwrap(key.currency0));
         }
@@ -193,10 +197,18 @@ contract Jackpot is BaseHook {
                     }
                 }
             }
-            emit NewLottoDraw(bytes32(uint256(uint160(params.player))) | params.draw.toPackedBytes());
+            emit BallsEntryEvent(
+                uint8(Ball.unwrap(params.draw.ball1)),
+                uint8(Ball.unwrap(params.draw.ball2)),
+                uint8(Ball.unwrap(params.draw.ball3)),
+                uint8(Ball.unwrap(params.draw.ball4)),
+                uint8(Ball.unwrap(params.draw.ball5)),
+                uint8(Ball.unwrap(params.draw.ball6))
+            );
         }
     }
 
+    // pays for LP
     function _calculateLottoFee() internal pure returns (uint24 lottoFee) {
         // TODO
         // 1. calculate draw fee using information from the pool
@@ -206,31 +218,44 @@ contract Jackpot is BaseHook {
         return LPFeeLibrary.MAX_LP_FEE / 10;
     }
 
-    function _beforeSwap(address, PoolKey calldata key, IPoolManager.SwapParams calldata, bytes calldata hookData)
-        internal
-        override
-        returns (bytes4, BeforeSwapDelta, uint24)
-    {
+    // pays fo user lotto ticket
+    function _takeLottoPurchase(IPoolManager.SwapParams calldata swapParams) internal returns (int256 amountToSwap) {
+        if (uint256(swapParams.amountSpecified) < lottoPerTicket) revert NotEnoughFundsToPlayLOTTO();
+        if (swapParams.amountSpecified < 0 && uint256(swapParams.amountSpecified) >= lottoPerTicket) {
+            return swapParams.amountSpecified + int256(lottoPerTicket);
+        }
+    }
+
+    function _beforeSwap(
+        address,
+        PoolKey calldata key,
+        IPoolManager.SwapParams calldata swapParams,
+        bytes calldata hookData
+    ) internal override returns (bytes4, BeforeSwapDelta, uint24) {
+        uint24 drawFee;
         // 1. check HookData for lotto params
-        if (hookData.length > 0) {
+        if (hookData.length > 0 && swapParams.zeroForOne == false) {
             SwapLottoParams memory data = abi.decode(hookData, (SwapLottoParams));
 
             // 2. save current dynamic fee to reset fee afterswap
             //		- (,,,) = manager.getSlot0(0)
-            (uint160 sqrtPriceX96, int24 tick, uint24 protocolFee, uint24 lpFee) = poolManager.getSlot0(key.toId());
-            lpFee.setPreviousDynamicFee();
+            // (uint160 sqrtPriceX96, int24 tick, uint24 protocolFee, uint24 lpFee) = poolManager.getSlot0(key.toId());
 
             // 3. update dynamic fee before swap
             // TODO: calculate fee based on number draw
-            uint24 drawFee = _calculateLottoFee();
-            uint24 newFee = drawFee;
-            poolManager.updateDynamicLPFee(key, newFee);
+            drawFee = _calculateLottoFee();
 
             // 4. create lotto entry
             _setDraw(key.toId(), data);
-        }
 
-        return (this.beforeSwap.selector, BeforeSwapDelta.wrap(0), 0);
+            // 5. amount to swap
+            int256 amountToSwap = _takeLottoPurchase(swapParams);
+
+            return (this.beforeSwap.selector, BeforeSwapDelta.wrap(amountToSwap), drawFee);
+        } else {
+            // set dynamic fee when zeroForOne == true 3%
+            return (this.beforeSwap.selector, BeforeSwapDelta.wrap(0), drawFee);
+        }
     }
 
     function _afterSwap(
@@ -251,9 +276,9 @@ contract Jackpot is BaseHook {
             SwapLottoParams memory data = abi.decode(hookData, (SwapLottoParams));
 
             // 2. update dynamic fee after swap
-            (uint24 previousDynamicFee) = DynamicFeeSlot.getPreviousDynamicFee();
-            uint24 newFee = previousDynamicFee;
-            poolManager.updateDynamicLPFee(key, newFee);
+            // (uint24 previousDynamicFee) = DynamicFeeSlot.getPreviousDynamicFee();
+            // uint24 newFee = previousDynamicFee;
+            // poolManager.updateDynamicLPFee(key, newFee);
 
             // TODO
             // 3. update user lotto draws struct
